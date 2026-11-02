@@ -7,8 +7,9 @@ a question a board of directors asks about AI. Every section opens from a one-gl
 summary into the detail behind it, and every detail page ends with **what to review**
 and **how to mitigate it with Airia**.
 
-It runs on your own machine. Nothing is stored and no data leaves your computer except
-the calls to the Airia API that you authorise with your own key.
+It runs on your own machine. Data stays in the browser unless you export it or explicitly
+enable AI analysis, which sends aggregate facts to the model service configured by the operator.
+The normal source requests go to the Airia environment you authorise with your own key.
 
 - [What you get](#what-you-get)
 - [Before you start](#before-you-start)
@@ -308,8 +309,10 @@ The dashboard says so on the page rather than showing a tidy number that is real
   browser cannot call it directly. It forwards **`GET` requests only**, and **only to
   `*.airia.ai` hosts** (plus any you add with `AIRIA_EXTRA_HOSTS`). The host allowlist stops
   it being used to send your key elsewhere.
-- **Nothing is written to disk.** Data is fetched into the tab, worked out in the browser
-  and dropped when you close it.
+- **Data stays in memory by default.** CSV and PowerPoint exports write the selected data
+  to files at your request. Enabling AI analysis sends aggregate facts to the configured model
+  service; raw records and the Airia key are excluded. Turning it off stops subsequent analysis
+  requests but does not erase facts already received by the provider.
 - **Personal data is minimised on screen:** email addresses in security events are partly
   masked, and exposed-key findings show only the provider.
 - **The agent, user and app names on screen are your tenant's real data.** Treat screenshots
@@ -392,9 +395,71 @@ Stack: **React 19 + TypeScript + Vite.** Charts are hand-rolled SVG with no char
 | `npm run check:palette` | Just the colour gate: contrast, colour-blind separation, lightness |
 | `npm run chrome` | Headless Chrome on port 9222, for the screenshot script |
 
-There is no unit-test suite. `npm run check` is the gate: types catch structure, and the
-palette check catches colour and accessibility regressions. Changes are verified by running the
-app against a real tenant.
+`npm run check` checks types and the palette. `npm test` covers the report's date boundaries,
+CSV escaping, missing-data handling, priority ordering, analysis response validation and the
+local model-service boundary. Live tenant verification still requires an Airia key.
+
+### Executive report controls
+
+The Overview now includes Settings, Data & assumptions, Ask AI and Export to deck.
+Each dimension has a consistent icon. Line charts, bar charts and rank tables have an
+Expand button opening their original sample data in a keyboard-accessible dialog with CSV export.
+CSV exports preserve source values before pixel reduction and escape spreadsheet formulas.
+
+The date controls filter **UTC chart sample timestamps** (bucket starts for aggregated series).
+They do not re-query Airia or change headline reporting periods, ownership snapshots,
+governance counts or categorical tables. A weekly or monthly bucket is included whole when its
+start is in range; it is never prorated. Finance's 30-day headline therefore remains explicitly
+30-day even when the chart is narrowed to seven days. The assumptions sheet explains these limits.
+Team/vendor/risk filters from the concept are not fabricated where sources lack a joinable field.
+
+**AI Model Analysis starts disabled.** Settings requires Cancel/Continue confirmation with the
+filter-performance warning before enabling. When enabled, the app debounces requests, cancels
+superseded requests and removes stale commentary as the range or snapshot changes. It provides
+an Executive Summary, an eight-principle risk/actionability plot, ranked priorities, one statement
+per dimension and source-linked Ask AI responses. Disabling removes all model commentary from
+the dashboard and subsequent deck exports. Unknown sources must remain unscored.
+
+For live AI, set these **server process environment variables** before starting Vite or `npm start`:
+
+```bash
+export BOARD_ANALYSIS_URL=https://your-approved-service.example/v1/chat/completions
+export BOARD_ANALYSIS_MODEL=your-model-name
+export BOARD_ANALYSIS_TOKEN=your-service-token
+npm run dev
+```
+
+Use an operator-approved service implementing the chat-completions request/response shape
+(`messages`, `model`, `choices[0].message.content`). Token authentication is optional for a local
+service. HTTPS is required except for a localhost provider. The local `/api/board-analysis` handler
+is shared by dev, preview and production, checks same-origin requests and response shape, limits
+request size, and times out after 60 seconds. Credentials stay server-side. Only aggregate facts,
+source windows, the chart range and an optional question go to the provider; the Airia key, raw
+audit records and agent names are not sent. With no provider configured the UI reports this
+explicitly; it does not substitute simulated analysis in the live application.
+
+Risk and actionability scores are subjective model estimates on a 1–5 scale, supported by a
+rationale in the rubric's expanded table. Priority = `(0.7 × risk + 0.3 × actionability) × 20`.
+Ties use risk, then the documented dimension order. This is decision support requiring review,
+not a new API finding or replacement for the existing agent risk rules.
+
+Export to deck creates an editable PowerPoint containing current facts, available AI commentary,
+source periods, native charts from the filtered overview series, and methodology pages. It uses
+the repository's content structure. The separate LG boardbook template was not supplied and is
+not reproduced. The export library is loaded only when needed in the live app.
+
+### Downloadable HTML preview
+
+```bash
+npm run build:html
+```
+
+Open `standalone/preview.html` directly in a browser. This single file bundles React, icons,
+styles and PowerPoint export with **synthetic fixtures** and **predefined demonstration AI
+responses**. It requires no CDN, network, credentials or backend and is visibly labeled as a
+preview. It uses the same report components and detail panels as the live app; it never calls
+Airia. During development, the equivalent preview is at `/preview.html`. Generated standalone
+files and PowerPoint files should not be committed, especially after using live tenant data.
 
 ### Taking screenshots
 

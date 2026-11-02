@@ -20,6 +20,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { proxyAiria } from './proxy.mjs'
+import { boardAnalysis } from './analysis.mjs'
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)))
 const DIST = join(ROOT, 'dist')
@@ -58,6 +59,7 @@ async function serveStatic(req, res) {
 }
 
 createServer((req, res) => {
+  if (req.url === '/api/board-analysis') return boardAnalysis(req, res)
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405).end(); return }
   if (req.url.startsWith('/airia/')) return proxyAiria(req, res)
   return serveStatic(req, res)

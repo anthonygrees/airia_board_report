@@ -1,3 +1,4 @@
+import { ChartTools } from '../../report/ChartTools'
 import { useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from '../primitives/icons'
 import { Tooltip } from '../primitives/Tooltip'
@@ -65,7 +66,7 @@ const FLAT = 0.0005
  * Changes are neutral — an arrow and a signed percentage, never red or
  * green. More spend is not inherently good or bad.
  */
-export function RankTable({
+function RankTablePlot({
   rows, labelHeading, valueHeading, changeHeading = 'Change', changeNote,
   newLabel = 'New',
   selectedKey = null, onSelect, pageSize = 10,
@@ -225,4 +226,11 @@ export function RankChange({ value, label = 'New' }: { value: RankRow['change'];
       {signedPercent(value)}
     </span>
   )
+}
+
+export function RankTable(props: RankTableProps) {
+  const details = [...new Set(props.rows.flatMap(r => (r.detail ?? []).map(d => d.label)))]
+  const columns = [{ key: 'name', label: props.labelHeading }, { key: 'value', label: props.valueHeading }, ...(props.showChange !== false ? [{ key: 'change', label: props.changeHeading ?? 'Change' }] : []), ...details.map((label, i) => ({ key: 'detail' + i, label }))]
+  const rows = [...props.rows].sort((a, b) => b.value - a.value).map(r => Object.fromEntries([['name', r.label], ['value', String(r.value)], ['change', r.change == null ? 'Not available' : String(r.change)], ...details.map((label, i) => ['detail' + i, r.detail?.find(d => d.label === label)?.value ?? 'Not available'])]))
+  return <ChartTools title={props.labelHeading + ' — ' + props.valueHeading} columns={columns} rows={rows}><RankTablePlot {...props} /></ChartTools>
 }
