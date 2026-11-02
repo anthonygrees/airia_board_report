@@ -1,3 +1,6 @@
+import { DimensionIcon } from './report/DimensionIcon'
+import type { DimensionId } from './report/model'
+import { ReportWorkspace } from './report/Workspace'
 import { useEffect, useState } from 'react'
 import { KeyGate, Tabs, Toolbar, ToolbarButton } from './components'
 import { Moon, Sun } from './components/primitives/icons'
@@ -147,7 +150,7 @@ export default function App() {
               href={href(p.route)}
               aria-current={route === p.route ? 'page' : undefined}
             >
-              {p.label}
+              {p.route !== 'overview' ? <DimensionIcon id={p.route as DimensionId} /> : null}{p.label}
             </a>
           ))}
         </nav>
@@ -176,12 +179,12 @@ export default function App() {
           : null}
       </Toolbar>
 
-      {body}
+      <ReportWorkspace key={host + key} board={board} overview={route === 'overview'}>{body}</ReportWorkspace>
 
       <p className="page__note">
         {loadedAt.length ? <>Loaded {new Date(Math.max(...loadedAt)).toLocaleTimeString()} · </> : null}
-        <button type="button" className="page__link" onClick={reload}>Refresh</button>. Nothing is stored:
-        the figures are built in this tab and dropped when it closes.
+        <button type="button" className="page__link" onClick={reload}>Refresh</button>. Figures stay in this tab unless you export them or enable AI analysis.
+        AI analysis sends aggregate facts to the configured model service.
       </p>
     </div>
   )

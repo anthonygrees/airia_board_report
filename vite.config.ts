@@ -1,6 +1,7 @@
 import { defineConfig, type Connect, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { proxyAiria } from './proxy.mjs'
+import { boardAnalysis } from './analysis.mjs'
 
 /**
  * The Airia API sends no Access-Control-Allow-Origin header, so the browser
@@ -11,7 +12,8 @@ import { proxyAiria } from './proxy.mjs'
  * Vite's static `proxy.target` cannot do.
  */
 const airia: Connect.NextHandleFunction = (req, res, next) => {
-  if (req.url?.startsWith('/airia/')) void proxyAiria(req, res)
+  if (req.url === '/api/board-analysis') void boardAnalysis(req, res)
+  else if (req.url?.startsWith('/airia/')) void proxyAiria(req, res)
   else next()
 }
 

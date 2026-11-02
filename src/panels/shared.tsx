@@ -1,3 +1,6 @@
+import { DimensionIcon } from '../report/DimensionIcon'
+import { useReport } from '../report/context'
+import type { DimensionId } from '../report/model'
 import type { ReactNode } from 'react'
 import { Card, LineChart, TableView } from '../components'
 import { compact } from '../lib/format'
@@ -50,18 +53,22 @@ export function SummaryCard(props: {
   children: ReactNode
 }) {
   const { to, title, value, valueSuffix, line, children } = props
+  const { analysis } = useReport()
+  const statement = analysis?.dimensions.find(d => d.id === to)?.statement
   return (
-    <a className="sum" href={href(to)} aria-label={`${title} — view detail`}>
+    <div className="sum">
       <Card
         title={title}
+        controls={<DimensionIcon id={to as DimensionId} />}
         value={value}
         valueSuffix={valueSuffix}
-        footer={<span className="sum__go">View detail <span aria-hidden="true">→</span></span>}
+        footer={<a className="sum__go" href={href(to)}>View detail <span aria-hidden="true">→</span></a>}
       >
         <p className="pn-sum__line">{line}</p>
         {children}
+        {statement ? <p className="report-comment"><span>AI interpretation</span>{statement}</p> : null}
       </Card>
-    </a>
+    </div>
   )
 }
 

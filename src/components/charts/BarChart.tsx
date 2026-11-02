@@ -1,3 +1,6 @@
+import { ChartTools } from '../../report/ChartTools'
+import { useReport } from '../../report/context'
+import { windowIndices } from '../../report/model'
 import { useId, useMemo, useState } from 'react'
 import { useSize } from '../../lib/useSize'
 import { linearScale, niceDomain, ticks, bandScale, clamp, type Reducer } from '../../lib/scale'
@@ -77,7 +80,7 @@ const MIN_BAR_PX = 2
 /** A stack segment shorter than this is dropped rather than drawn. */
 const MIN_SEG_PX = 1
 
-export function BarChart({
+function BarChartPlot({
   x, series, height = 170, activeSeries = null,
   formatValue = compact, reducer = 'sum', yTickCount = 3, yAxis = true, formatTick, formatX, ghost, ghostMark = 'bar',
   xLabel,
@@ -379,4 +382,17 @@ export function BarChart({
       ) : null}
     </div>
   )
+}
+
+export function BarChart(props: BarChartProps) {
+  const { window } = useReport()
+  const indices = windowIndices(props.x, window)
+  const x = indices.map(i => props.x[i])
+  const series = props.series.map(s => ({ ...s, values: indices.map(i => s.values[i]),  }))
+  const ghost = props.ghost ? { ...props.ghost, values: indices.map(i => props.ghost!.values[i]) } : undefined
+  const columns = [{ key: 'at', label: 'Bucket start (UTC)' }, ...series.map(s => ({ key: s.key, label: s.label })), ...(ghost ? [{ key: '_reference', label: ghost.label }] : [])]
+  const rows = x.map((at, i) => Object.fromEntries([['at', new Date(at).toISOString()], ...series.map(s => [s.key, s.values[i] == null ? 'Not available' : String(s.values[i])]), ...(ghost ? [['_reference', ghost.values[i] == null ? 'Not available' : String(ghost.values[i])]] : [])]))
+  return <ChartTools title={series.map(s => s.label).join(', ') || 'Chart'} columns={columns} rows={rows}>
+    {x.length ? <BarChartPlot {...props} x={x} series={series} ghost={ghost} /> : <p className="pn-pending">No chart buckets in this date range.</p>}
+  </ChartTools>
 }

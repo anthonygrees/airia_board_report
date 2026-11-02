@@ -1,0 +1,49 @@
+.report-toolbar { margin: 0 0 20px; }
+.report-actions, .report-filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.report-actions h2 { margin-right: auto; }
+.report-toolbar h2, .report-section h2 { font-size: 19px; margin-top: 0; }
+.report-filters { margin-top: 16px; align-items: end; }
+.report-filters label, .report-ask label { display: grid; gap: 6px; font-size: 12px; }
+.report-filters input, .report-ask input { background: var(--viz-surface); color: var(--viz-text-primary); border: 1px solid var(--viz-border); border-radius: var(--viz-radius-ctl); padding: 10px; font: inherit; }
+.report-note { color: var(--viz-text-secondary); font-size: 12px; line-height: 1.6; }
+.report-section { padding: 22px; margin-bottom: 20px; border: 1px solid var(--viz-border); border-radius: var(--viz-radius-card); background: var(--viz-surface); }
+.report-section p { line-height: 1.7; }
+.report-section h2 small { font-size: 11px; font-weight: 400; color: var(--viz-text-secondary); }
+.report-chart { min-width: 0; }
+.report-chart__actions { display: flex; justify-content: end; margin-bottom: 8px; }
+.report-modal { color: var(--viz-text-primary); background: var(--viz-surface-raised); border: 1px solid var(--viz-border); border-radius: var(--viz-radius-card); width: min(960px, calc(100% - 32px)); max-height: 85dvh; padding: 24px; }
+.report-modal::backdrop { background: var(--viz-text-primary); opacity: .35; }
+.report-modal > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.report-modal h2 { margin: 0; font-size: 22px; }
+.report-modal p { line-height: 1.65; }
+.report-modal .viz-tableview { margin-top: 18px; }
+.report-modal .viz-tableview th, .report-modal .viz-tableview td { white-space: normal; overflow-wrap: anywhere; }
+.report-dimension-icon { color: var(--viz-text-secondary); display: inline-flex; flex-shrink: 0; }
+.report-priority-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.report-priority-layout > div { min-width: 0; }
+.report-rubric { width: 100%; display: block; height: 310px; }
+.report-rubric line { stroke: var(--viz-grid); stroke-width: 1; }
+.report-rubric text { fill: var(--viz-text-secondary); font: 11px var(--viz-font); }
+.report-rubric__mark { fill: var(--viz-series-1); }
+.report-rubric .report-rubric__rank { fill: var(--viz-surface); }
+.report-priorities { margin: 0; padding-left: 24px; }
+.report-priorities li { padding: 6px; }
+.report-priorities a { display: flex; gap: 10px; align-items: center; text-decoration: none; color: var(--viz-text-primary); font-size: 13px; }
+.report-priorities a span:last-child { margin-left: auto; font-variant-numeric: tabular-nums; }
+.report-comment { border-top: 1px solid var(--viz-border); padding-top: 12px; font-size: 13px; line-height: 1.65; }
+.report-comment > span { display: block; color: var(--viz-text-secondary); font-size: 11px; margin-bottom: 5px; }
+.report-nutrition { border-top: 5px solid var(--viz-text-primary); border-bottom: 5px solid var(--viz-text-primary); }
+.report-nutrition > div { padding: 14px 0; border-bottom: 1px solid var(--viz-border); }
+.report-nutrition dt { font-weight: 600; }
+.report-nutrition dd { margin: 6px 0 0; line-height: 1.6; color: var(--viz-text-secondary); }
+.report-switch { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+.report-switch input { width: 22px; height: 22px; }
+.report-warning { border: 1px solid var(--viz-border); padding: 18px; background: var(--viz-surface-sunken); border-radius: var(--viz-radius-ctl); }
+.report-ask { display: flex; gap: 10px; align-items: end; }
+.report-ask label { flex: 1; min-width: 0; }
+.report-answer { margin-top: 20px; padding: 18px; background: var(--viz-surface-sunken); border-radius: var(--viz-radius-ctl); white-space: pre-line; }
+.report-actions a, a.sum__go { color: var(--viz-text-primary); }
+.page__nav { flex-wrap: wrap; }
+@media (max-width: 720px) { .report-priority-layout { grid-template-columns: minmax(0, 1fr); } .report-section { padding: 16px; } .report-actions h2 { width: 100%; margin-bottom: 4px; } .report-filters input { max-width: 100%; font-size: 16px; } .report-ask { flex-wrap: wrap; } }
+
+.page__navlink { display: inline-flex; align-items: center; gap: 6px; }
