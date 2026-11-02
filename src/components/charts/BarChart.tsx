@@ -1,0 +1,382 @@
+import { useId, useMemo, useState } from 'react'
+import { useSize } from '../../lib/useSize'
+import { linearScale, niceDomain, ticks, bandScale, clamp, type Reducer } from '../../lib/scale'
+import { barPath } from '../../lib/path'
+import { compact, fullDate, grainFor } from '../../lib/format'
+import { axisGutter } from '../../lib/axis'
+import { Tooltip, type TooltipRow } from '../primitives/Tooltip'
+
+export interface BarSeries {
+  key: string
+  label: string
+  color: string
+  /** `null` marks a bucket with no data. */
+  values: readonly (number | null)[]
+}
+
+export interface BarChartProps {
+  /** Timestamps in ms, ascending, aligned with every series' `values`. */
+  x: readonly number[]
+  /** One series draws plain columns; several stack flush into one bar. */
+  series: readonly BarSeries[]
+  height?: number
+  activeSeries?: string | null
+  formatValue?: (n: number) => string
+  /** How samples combine when there are more bars than pixels. */
+  reducer?: Reducer
+  yTickCount?: number
+  /** Formats the y-axis tick labels. Defaults to `formatValue`, but ticks
+   *  usually want a shorter form: "$1.2K" on the axis, "$1,238.40" in the
+   *  tooltip. */
+  formatTick?: (n: number) => string
+  /**
+   * Labels the x position in the tooltip. Supply this whenever the bucket
+   * size is known: the chart's own fallback infers a format from the total
+   * span, which drops the time of day on any range wider than a few days.
+   */
+  formatX?: (t: number) => string
+  /** Label the gridlines — see the note on LineChart. */
+  yAxis?: boolean
+  /**
+   * A faint reference series drawn BEHIND the stack, on the same scale — for
+   * showing the unfiltered whole while the stack shows an isolated part.
+   *
+   * It joins the y-domain, so isolating a series does not rescale the axis and
+   * the part keeps its true size relative to the whole.
+   */
+  ghost?: { label: string; values: readonly (number | null)[] }
+  /**
+   * How the ghost is drawn.
+   *
+   * `bar` (the default) is a grey column BEHIND the stack, which only works
+   * when the ghost is the larger of the two — the whole behind an isolated
+   * part. When it can be smaller, as with last week against this week, a
+   * column behind is simply hidden. `pair` draws it as its own grey column
+   * BESIDE each bar instead, so it reads whichever is larger. (A `tick`
+   * across the bar was tried first; over a short bar, or alone over an
+   * empty day, it read as a stray mark.)
+   */
+  ghostMark?: 'bar' | 'pair'
+  /**
+   * Label every column under the axis — for a handful of columns, where the
+   * reader wants "which day is this" without hovering. Labels that would
+   * collide are thinned to every other one, and so on.
+   */
+  xLabel?: (t: number) => string
+}
+
+const PAD = { top: 10, right: 6, bottom: 2, left: 6 }
+/** Room under the axis for `xLabel`. */
+const X_LABEL_H = 20
+/** A column label is given this much width before labels are thinned. */
+const X_LABEL_W = 52
+/** The gap between a pair's two columns. */
+const PAIR_GAP = 2
+/** A bar narrower than this is a sliver that aliases into a smear. */
+const MIN_BAR_PX = 2
+/** A stack segment shorter than this is dropped rather than drawn. */
+const MIN_SEG_PX = 1
+
+export function BarChart({
+  x, series, height = 170, activeSeries = null,
+  formatValue = compact, reducer = 'sum', yTickCount = 3, yAxis = true, formatTick, formatX, ghost, ghostMark = 'bar',
+  xLabel,
+}: BarChartProps) {
+  const pair = ghost != null && ghostMark === 'pair'
+  const bottom = PAD.bottom + (xLabel ? X_LABEL_H : 0)
+  const [ref, size] = useSize<HTMLDivElement>()
+  const uid = useId()
+  const [hover, setHover] = useState<number | null>(null)
+  const w = size.width
+
+  const model = useMemo(() => {
+    if (w <= 0 || x.length === 0 || series.length === 0) return null
+
+    // Provisional gutter so the density reduction has a width to work with;
+    // replaced below once the tick labels are known.
+    const provisionalLeft = PAD.left + (yAxis ? 40 : 0)
+    const plotW0 = Math.max(1, w - provisionalLeft - PAD.right)
+    const plotH = Math.max(1, height - PAD.top - bottom)
+
+    // Bucket down to the number of bars the card can actually paint. The
+    // chart stays dense — hundreds of thin columns — but never sub-pixel.
+    const maxBars = Math.max(2, Math.floor(plotW0 / MIN_BAR_PX))
+    const stride = Math.max(1, Math.ceil(x.length / maxBars))
+    const buckets: Array<[number, number]> = []
+    for (let i = 0; i < x.length; i += stride) buckets.push([i, Math.min(i + stride, x.length)])
+
+    const times = buckets.map(([s, e]) => x[Math.floor((s + e - 1) / 2)])
+    const reduced = series.map((s) => ({
+      ...s,
+      points: buckets.map(([start, end]) => {
+        let sum = 0, max = -Infinity, n = 0
+        for (let i = start; i < end; i++) {
+          const v = s.values[i]
+          if (v == null || !Number.isFinite(v)) continue
+          sum += v
+          if (v > max) max = v
+          n += 1
+        }
+        if (n === 0) return null
+        return reducer === 'mean' ? sum / n : reducer === 'max' ? max : sum
+      }) as (number | null)[],
+    }))
+
+    const totals = times.map((_, i) => reduced.reduce((acc, s) => acc + Math.max(0, s.points[i] ?? 0), 0))
+
+    // Bucket the ghost the same way, so it lines up with the stack.
+    const ghostPoints = ghost
+      ? buckets.map(([start, end]) => {
+          let acc = 0
+          for (let i = start; i < end; i++) acc += Math.max(0, ghost.values[i] ?? 0)
+          return reducer === 'mean' ? acc / Math.max(1, end - start) : acc
+        })
+      : null
+
+    const [y0, y1] = niceDomain(0, Math.max(...totals, ...(ghostPoints ?? []), 1), yTickCount)
+
+    // Size the gutter to the labels it has to hold.
+    const tickFmt = formatTick ?? formatValue
+    const tickValues = ticks(y0, y1, yTickCount)
+    const tickLabels = tickValues.map(tickFmt)
+    const left = PAD.left + axisGutter(tickLabels, yAxis)
+    const plotW = Math.max(1, w - left - PAD.right)
+
+    // A pair is two columns in one band, so it is allowed twice the width.
+    const band = bandScale(times.length, plotW, pair ? 8 : 2, pair ? 48 : 24)
+    // Where this week's bar sits within its band, and how wide it is: the
+    // whole band, or the right half of a pair with last week on the left.
+    const half = pair ? Math.max(1, (band.width - PAIR_GAP) / 2) : band.width
+    const barOff = pair ? band.width - half : 0
+    const ys = linearScale([y0, y1], [PAD.top + plotH, PAD.top])
+    const baseline = ys(y0)
+    const radius = Math.min(4, half / 2)
+
+    /**
+     * Stack from the baseline up, as ONE bar.
+     *
+     * Segments sit flush, and the rounding belongs to the column, not to
+     * any segment: each column is clipped to a single rounded bar the
+     * height of the whole stack. An earlier version rounded every segment
+     * and cut a 2px surface gap between them, so a stack read as a pile of
+     * beads — the eye counted marks instead of reading one height. Rounding
+     * only the top SEGMENT is not enough either: a 2px cap clamps its
+     * radius to 2px and sits on the bar like a blob.
+     *
+     * Every boundary is placed on a whole pixel, from the RUNNING total
+     * rather than from each segment's own height. Neighbours then share an
+     * exact edge, so there is no anti-aliased seam between two colours, and
+     * rounding never accumulates up the stack: the top is always within
+     * half a pixel of the true total.
+     *
+     * A segment shorter than MIN_SEG_PX is not drawn at all. Forcing a
+     * minimum height on a negligible category turned it into a sliver that
+     * read as a mark of its own. Its value is still in the tooltip, which is
+     * where that detail belongs; skipping it moves nothing else, because the
+     * boundaries come from the running total.
+     */
+    const columns = times.map((_, i) => {
+      let cum = 0
+      let below = Math.round(baseline)
+      const segs = reduced.map((s) => {
+        const v = Math.max(0, s.points[i] ?? 0)
+        cum += v
+        const top = Math.round(ys(cum))
+        const h = below - top
+        const seg = { key: s.key, label: s.label, color: s.color, value: v, top, h: h < MIN_SEG_PX ? 0 : h }
+        if (seg.h > 0) below = top
+        return seg
+      })
+      // The painted top: the outline every segment is clipped to.
+      return { x: band.at(i), segs, top: below, ghost: ghostPoints ? baseline - ys(ghostPoints[i]) : 0 }
+    })
+
+    // Thin the labels until they stop colliding: every column, every other…
+    const labelEvery = Math.max(1, Math.ceil(X_LABEL_W / band.step))
+
+    return {
+      times, columns, band, baseline, stride, radius, left, ghostPoints, half, barOff, labelEvery,
+      gridlines: tickValues.map((v, i) => ({ v, y: ys(v), label: tickLabels[i] })),
+      seriesMeta: reduced,
+    }
+  }, [w, height, x, series, reducer, yTickCount, yAxis, formatTick, formatValue, ghost, pair, bottom])
+
+  const grain = useMemo(() => grainFor((x[x.length - 1] ?? 0) - (x[0] ?? 0)), [x])
+
+  function pick(clientX: number, rect: DOMRect) {
+    if (!model) return
+    const rel = clientX - rect.left - model.left
+    setHover(clamp(Math.floor(rel / model.band.step), 0, model.times.length - 1))
+  }
+
+  const rows: TooltipRow[] = model && hover != null
+    ? [
+        ...model.seriesMeta.map((s) => {
+          const v = s.points[hover]
+          return { color: s.color, label: s.label, value: v == null ? '—' : formatValue(v), swatch: 'rect' as const }
+        }),
+        // A total of one series only restates it.
+        ...(model.seriesMeta.length > 1 ? [{
+          color: 'transparent',
+          label: 'Total',
+          value: formatValue(model.seriesMeta.reduce((acc, s) => acc + Math.max(0, s.points[hover] ?? 0), 0)),
+          emphasis: true,
+        }] : []),
+        ...(ghost && model.ghostPoints
+          ? [{
+              color: 'var(--viz-other)',
+              label: ghost.label,
+              value: formatValue(model.ghostPoints[hover] ?? 0),
+              swatch: 'rect' as const,
+              emphasis: true,
+            }]
+          : []),
+      ]
+    : []
+
+  const bucketNote = model && model.stride > 1
+    ? `${model.stride} samples per bar`
+    : undefined
+
+  return (
+    <div className="viz-plot" ref={ref} style={{ height }}>
+      {model ? (
+        <>
+          <svg
+            width={w}
+            height={height}
+            role="img"
+            aria-label={`Bar chart: ${series.map((s) => s.label).join(', ')}`}
+            tabIndex={0}
+            onPointerMove={(e) => pick(e.clientX, e.currentTarget.getBoundingClientRect())}
+            onPointerLeave={() => setHover(null)}
+            onBlur={() => setHover(null)}
+            onKeyDown={(e) => {
+              if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+              e.preventDefault()
+              setHover((h) => clamp((h ?? 0) + (e.key === 'ArrowRight' ? 1 : -1), 0, model.times.length - 1))
+            }}
+          >
+            <g aria-hidden="true">
+              {model.gridlines.map((g) => (
+                <line key={g.v} x1={model.left} x2={w - PAD.right} y1={g.y} y2={g.y} className="viz-grid-line" />
+              ))}
+              {yAxis
+                ? model.gridlines.map((g) => (
+                    <text key={`t${g.v}`} x={model.left - 8} y={g.y} className="viz-tick" textAnchor="end" dominantBaseline="middle">
+                      {g.label}
+                    </text>
+                  ))
+                : null}
+            </g>
+
+            {/* A hovered column gets a wash the full height of the plot, so a
+                1px bar is still findable without aiming at it. */}
+            {hover != null ? (
+              <rect
+                aria-hidden="true"
+                x={model.left + hover * model.band.step}
+                y={PAD.top}
+                width={model.band.step}
+                height={model.baseline - PAD.top}
+                className="viz-band-hover"
+              />
+            ) : null}
+
+            {ghost && ghostMark === 'bar' ? (
+              <g aria-hidden="true">
+                {model.columns.map((col, i) =>
+                  col.ghost <= 0.5 ? null : (
+                    <path
+                      key={`g${i}`}
+                      d={barPath(model.left + col.x, model.baseline - col.ghost, model.band.width, col.ghost, model.radius)}
+                      className="viz-ghost-bar"
+                    />
+                  ),
+                )}
+              </g>
+            ) : null}
+
+            {pair ? (
+              <g aria-hidden="true">
+                {model.columns.map((col, i) =>
+                  col.ghost <= 0.5 ? null : (
+                    <path
+                      key={`p${i}`}
+                      d={barPath(model.left + col.x, model.baseline - col.ghost, model.half, col.ghost, model.radius)}
+                      className="viz-ghost-pair"
+                    />
+                  ),
+                )}
+              </g>
+            ) : null}
+
+            <g>
+              {model.columns.map((col, i) => {
+                const base = Math.round(model.baseline)
+                if (col.top >= base) return null
+                const clip = `${uid}-bar${i}`
+                return (
+                <g key={i} clipPath={`url(#${clip})`}>
+                  <clipPath id={clip}>
+                    <path d={barPath(model.left + col.x + model.barOff, col.top, model.half, base - col.top, model.radius)} />
+                  </clipPath>
+                  {col.segs.map((seg) =>
+                    seg.h <= 0 ? null : (
+                      <rect
+                        key={seg.key}
+                        x={model.left + col.x + model.barOff}
+                        y={seg.top}
+                        width={model.half}
+                        height={seg.h}
+                        fill={seg.color}
+                        opacity={activeSeries != null && activeSeries !== seg.label ? 0.22 : 1}
+                      />
+                    ),
+                  )}
+                </g>
+                )
+              })}
+            </g>
+
+            <line
+              aria-hidden="true"
+              x1={model.left} x2={w - PAD.right}
+              y1={model.baseline} y2={model.baseline}
+              className="viz-axis-line"
+            />
+
+            {xLabel && model.stride === 1 ? (
+              <g aria-hidden="true">
+                {model.times.map((t, i) => (i % model.labelEvery !== 0 ? null : (
+                  <text
+                    key={`x${i}`}
+                    x={model.left + (i + 0.5) * model.band.step}
+                    y={model.baseline + 14}
+                    className="viz-tick"
+                    textAnchor="middle"
+                  >
+                    {xLabel(t)}
+                  </text>
+                )))}
+              </g>
+            ) : null}
+
+          </svg>
+
+          {hover != null ? (
+            <Tooltip
+              x={model.left + hover * model.band.step + model.band.step / 2}
+              y={Math.min(...model.columns[hover].segs.map((s) => s.top))}
+              width={w}
+              height={height}
+              title={formatX ? formatX(model.times[hover]) : fullDate(model.times[hover], grain)}
+              rows={rows}
+              footer={bucketNote}
+            />
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  )
+}

@@ -1,0 +1,46 @@
+/**
+ * viz-kit — dependency-free chart components.
+ *
+ * Every visual value comes from `src/theme/tokens.css`. Copy that file plus
+ * this folder into another project and the kit travels with its palette.
+ */
+
+export { Card, AxisExtent } from './primitives/Card'
+export type { CardProps } from './primitives/Card'
+export { Legend } from './primitives/Legend'
+export type { LegendItem, LegendProps } from './primitives/Legend'
+export { Tooltip } from './primitives/Tooltip'
+export type { TooltipRow, TooltipProps } from './primitives/Tooltip'
+export { TableView } from './primitives/TableView'
+export type { TableColumn, TableViewProps } from './primitives/TableView'
+export { StatTile } from './primitives/StatTile'
+export type { StatTileProps } from './primitives/StatTile'
+export { TimeRangeBar, Toolbar, WindowPager, ToolbarButton, RANGES, RANGE_LABELS, RANGE_SPANS, spanLabel } from './primitives/TimeRangeBar'
+export type { AnchorControls, PickerControls, GrainControls, WindowPagerProps } from './primitives/TimeRangeBar'
+export { TimePicker, parseDay } from './primitives/TimePicker'
+export type { TimePickerProps, QuickRange } from './primitives/TimePicker'
+export { DropTrigger, SelectMenu } from './primitives/Dropdown'
+export type { DropTriggerProps, SelectMenuProps, SelectMenuOption } from './primitives/Dropdown'
+export { Calendar, dayLabel } from './primitives/Calendar'
+export type { CalendarProps } from './primitives/Calendar'
+export * as icons from './primitives/icons'
+export { KeyGate } from './primitives/KeyGate'
+export type { KeyGateProps } from './primitives/KeyGate'
+export { MultiSelect } from './primitives/MultiSelect'
+export type { MultiSelectProps } from './primitives/MultiSelect'
+export { Tabs } from './primitives/Tabs'
+export type { TabsProps } from './primitives/Tabs'
+export type { RangeKey, TimeRangeBarProps } from './primitives/TimeRangeBar'
+
+export { LineChart } from './charts/LineChart'
+export type { LineChartProps, LineSeries } from './charts/LineChart'
+export { BarChart } from './charts/BarChart'
+export type { BarChartProps, BarSeries } from './charts/BarChart'
+export { RankTable, RankChange } from './charts/RankTable'
+export type { RankTableProps, RankRow, RankDetail } from './charts/RankTable'
+export { Sparkline } from './charts/Sparkline'
+export type { SparklineProps } from './charts/Sparkline'
+
+export * as palette from '../theme/palette'
+export * as format from '../lib/format'
+export * as scale from '../lib/scale'

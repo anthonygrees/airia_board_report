@@ -1,0 +1,424 @@
+/* Demo page shell. The kit itself lives in `components/kit.css`. */
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+/* Reserve the scrollbar's width whether or not the page scrolls. The page is
+   centred, so a scrollbar appearing — the three-row provider table against
+   the longer gateway one — slid every component sideways by half its width. */
+html { scrollbar-gutter: stable; }
+
+body {
+  margin: 0;
+  background: var(--viz-page);
+  color: var(--viz-text-primary);
+  font-family: var(--viz-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.page { max-width: 1520px; margin: 0 auto; padding: 28px 28px 48px; }
+
+.page__head {
+  display: flex; align-items: baseline; gap: 28px; flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+/* Page nav beside the title: text tabs with an underline for the current
+   page. Quieter than the toolbar on purpose — it changes the page, it does
+   not narrow the data. */
+.page__nav { display: flex; gap: 20px; }
+.page__navlink {
+  position: relative; padding: 4px 0;
+  font: 500 14px/1.2 var(--viz-font); color: var(--viz-text-muted);
+  text-decoration: none;
+}
+.page__navlink:hover { color: var(--viz-text-primary); }
+.page__navlink[aria-current='page'] { color: var(--viz-text-primary); }
+.page__navlink[aria-current='page']::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -3px;
+  height: 2px; border-radius: 1px; background: var(--viz-focus);
+}
+.page__navlink:focus-visible { outline: 2px solid var(--viz-focus); outline-offset: 3px; border-radius: 2px; }
+.page__head h1 {
+  margin: 0;
+  font: 600 22px/1.2 var(--viz-font);
+  color: var(--viz-text-secondary);
+  letter-spacing: -0.01em;
+}
+/* The tenant in full ink ahead of the quieter page name, parted by a
+   hairline: "Airia | Gateway usage". */
+.page__tenant {
+  color: var(--viz-text-primary); font-weight: 700;
+  padding-right: 12px; margin-right: 12px;
+  border-right: 1px solid var(--viz-border);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+.grid__wide { grid-column: span 2; }
+.grid__full { grid-column: 1 / -1; }
+
+@media (max-width: 1180px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .page { padding: 18px 16px 36px; }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .grid__wide, .grid__full { grid-column: span 1; }
+}
+
+.page__note {
+  margin: 22px 2px 0;
+  font: 400 12px/1.5 var(--viz-font);
+  color: var(--viz-text-muted);
+  max-width: 62ch;
+}
+/* The report is a centred column (see .report); its note lines up with it. */
+.page__note[data-view='report'] { max-width: 760px; margin-left: auto; margin-right: auto; }
+
+/* KPI strip above the charts */
+/* auto-fit rather than fixed breakpoints, so the tiles stay evenly balanced
+   however many there are — three across a phone, not two and an orphan. */
+.strip {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 18px; margin-bottom: 18px;
+}
+
+.empty {
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-border);
+  border-radius: var(--viz-radius-card);
+  padding: 28px;
+  font: 400 13px/1.6 var(--viz-font);
+  color: var(--viz-text-secondary);
+}
+.empty strong { display: block; color: var(--viz-text-primary); font-size: 14px; margin-bottom: 6px; }
+.empty p { margin: 0 0 12px; }
+.empty pre {
+  margin: 0; padding: 12px 14px; overflow-x: auto;
+  background: var(--viz-surface-sunken);
+  border-radius: var(--viz-radius-ctl);
+  font: 400 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--viz-text-primary);
+}
+
+/* --- held-render status line --------------------------------------------- *
+   Shown INSTEAD of unmounting the dashboard while a refetch runs: the page
+   below stays exactly where it was, at reduced opacity, and this says why.
+   The alternative — dropping to the key gate — read as being logged out. */
+.page__busy {
+  display: flex; align-items: center; gap: 12px;
+  /* Held back for the same grace period as the card dimming, so the two
+     appear together and neither flickers on a fast re-fold. */
+  animation: viz-appear 1ms linear var(--viz-dur-grace) both;
+  margin: -6px 0 18px; padding: 9px 14px;
+  background: var(--viz-surface); border: 1px solid var(--viz-border);
+  border-radius: var(--viz-radius-ctl);
+  font: 400 12px/1.4 var(--viz-font); color: var(--viz-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.page__progress {
+  position: relative; flex-shrink: 0;
+  width: 120px; height: 4px; border-radius: 2px; overflow: hidden;
+  background: var(--viz-surface-sunken);
+}
+.page__progress > span {
+  position: absolute; inset: 0 auto 0 0;
+  background: var(--viz-seq-400); border-radius: 2px;
+  transition: width var(--viz-dur-base) var(--viz-ease);
+}
+/* No total to count against yet — a pulse says "working", not "45% done". */
+.page__progress[data-indeterminate] > span { width: 40%; animation: viz-slide 1.1s var(--viz-ease) infinite; }
+@keyframes viz-appear { from { visibility: hidden; } to { visibility: visible; } }
+@keyframes viz-slide {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(250%); }
+}
+
+/* The key is fine, the request was not: the last complete window stays up. */
+.page__error {
+  margin: -6px 0 18px; padding: 9px 14px;
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-border);
+  border-left: 3px solid var(--viz-status-critical);
+  border-radius: var(--viz-radius-ctl);
+  font: 400 12px/1.4 var(--viz-font); color: var(--viz-text-secondary);
+}
+
+/* Matches the cards' own loading dim, so the whole page fades as one. */
+.strip { transition: opacity var(--viz-dur-base) var(--viz-ease); }
+.strip[data-loading] { opacity: 0.45; transition-delay: var(--viz-dur-grace); }
+
+/* Said rather than left blank: a missing comparison needs a reason, or it
+   reads as a bug. */
+.page__hint {
+  margin: -6px 0 18px; padding: 0 2px;
+  font: 400 11.5px/1.5 var(--viz-font); color: var(--viz-text-muted);
+}
+
+/* Active-scope banner. States plainly that the whole page is filtered, so a
+   reader never mistakes a scoped total for the tenant total. */
+.page__scope {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: -6px 0 18px;
+  padding: 9px 14px;
+  background: var(--viz-seq-100);
+  border-radius: var(--viz-radius-ctl);
+  font: 400 12px/1.4 var(--viz-font);
+  color: var(--viz-seq-700);
+}
+.page__scope button {
+  font: 600 12px/1 var(--viz-font);
+  color: var(--viz-seq-700);
+  background: none; border: 0; cursor: pointer;
+  text-decoration: underline; padding: 2px;
+}
+
+/* --- key gate ------------------------------------------------------------ */
+
+.gate { display: grid; place-items: center; min-height: 72vh; padding: 24px; }
+.gate__card {
+  width: 100%; max-width: 440px;
+  display: flex; flex-direction: column;
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-border);
+  border-radius: var(--viz-radius-card);
+  padding: 28px;
+}
+.gate__card h2 {
+  margin: 0 0 6px; font: 600 18px/1.3 var(--viz-font);
+  color: var(--viz-text-primary); letter-spacing: -0.01em;
+}
+.gate__lead { margin: 0 0 20px; font: 400 13px/1.55 var(--viz-font); color: var(--viz-text-secondary); }
+.gate__field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.gate__label { font: 500 12px/1 var(--viz-font); color: var(--viz-text-secondary); }
+/* One box for every control, select included: a fixed height and the same
+   inset, so text in the region menu and the key field starts on one line. */
+.gate__input {
+  box-sizing: border-box; width: 100%; height: 42px; margin: 0;
+  font: 400 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--viz-text-primary);
+  background: var(--viz-surface-sunken);
+  border: 1px solid var(--viz-border);
+  border-radius: var(--viz-radius-ctl);
+  padding: 0 13px; outline: none;
+}
+.gate__input:focus { border-color: var(--viz-focus); }
+/* The native arrow sits flush against the edge and differs per browser, so
+   it is drawn here instead, inset by the same 13px as the text. */
+.gate__select { position: relative; }
+.gate__select select {
+  appearance: none; -webkit-appearance: none;
+  font-family: var(--viz-font); padding-right: 36px; cursor: pointer;
+}
+.gate__select::after {
+  content: ''; position: absolute; right: 15px; top: 50%;
+  width: 6px; height: 6px; margin-top: -5px;
+  border: solid var(--viz-text-secondary); border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg); pointer-events: none;
+}
+.gate__hint {
+  margin: 0;
+  font: 400 11.5px/1.4 var(--viz-font); color: var(--viz-text-muted);
+}
+.gate__hint code { font: 400 11.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--viz-text-secondary); margin-left: 4px; }
+.gate__remember {
+  display: flex; align-items: center; gap: 8px; margin-top: 4px;
+  font: 400 12.5px/1 var(--viz-font); color: var(--viz-text-secondary); cursor: pointer;
+}
+.gate__remember input { margin: 0; }
+.gate__error {
+  margin: 0 0 20px; padding: 10px 12px;
+  background: var(--viz-surface-sunken);
+  border-left: 3px solid var(--viz-status-critical);
+  border-radius: 4px;
+  font: 400 12.5px/1.5 var(--viz-font); color: var(--viz-text-primary);
+}
+.gate__submit {
+  height: 42px; padding: 0 12px;
+  font: 600 13px/1 var(--viz-font); color: #fff;
+  background: var(--viz-seq-400);
+  border: 0; border-radius: var(--viz-radius-ctl); cursor: pointer;
+}
+.gate__submit:hover:not(:disabled) { background: var(--viz-seq-500); }
+.gate__submit:disabled { opacity: 0.5; cursor: default; }
+.gate__note { margin: 16px 0 0; font: 400 11px/1.5 var(--viz-font); color: var(--viz-text-muted); }
+.gate__note code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* the key chip in the toolbar */
+.viz-keychip {
+  display: inline-flex; align-items: center; gap: 8px;
+  font: 500 12px/1 var(--viz-font); color: var(--viz-text-secondary);
+  background: var(--viz-surface); border: 1px solid var(--viz-border);
+  border-radius: var(--viz-radius-ctl); padding: 9px 12px;
+}
+.viz-keychip code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--viz-text-primary); }
+.viz-keychip button {
+  font: 500 12px/1 var(--viz-font); color: var(--viz-text-secondary);
+  background: none; border: 0; cursor: pointer; text-decoration: underline; padding: 2px;
+}
+.viz-keychip button:hover { color: var(--viz-text-primary); }
+
+/* ------------------------------------------------------- weekly report -- */
+
+/* A memo, not a dashboard: one column at reading width, sections parted by
+   whitespace and a hairline rather than boxed in cards. */
+.report {
+  max-width: 760px; margin: 8px auto 0;
+  transition: opacity var(--viz-dur-base) var(--viz-ease);
+}
+/* Dimmed on the same grace delay as the cards, so a cached re-fold does not
+   flash; fading back is immediate. */
+.report[data-loading] { opacity: 0.45; transition-delay: var(--viz-dur-grace); }
+
+.report__head {
+  position: relative;
+  padding: 28px 0 26px;
+  border-bottom: 1px solid var(--viz-border);
+}
+.report__kicker {
+  margin: 0 0 10px;
+  font: 600 12px/1.2 var(--viz-font); color: var(--viz-text-muted);
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.report__tenant { color: var(--viz-text-secondary); }
+.report__headline {
+  margin: 0; max-width: 20ch;
+  font: 700 40px/1.1 var(--viz-font); letter-spacing: -0.025em;
+  color: var(--viz-text-primary);
+}
+.report__copy { position: absolute; top: 24px; right: 0; }
+
+.report__section { padding: 26px 0 24px; border-bottom: 1px solid var(--viz-grid); }
+.report__takeaway {
+  margin: 0 0 16px;
+  font: 650 20px/1.3 var(--viz-font); letter-spacing: -0.01em;
+  color: var(--viz-text-primary);
+  overflow-wrap: anywhere;
+}
+.report__label {
+  margin: 0 8px 6px 0;
+  font: 600 11.5px/1.2 var(--viz-font); color: var(--viz-text-muted);
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+.report__sub {
+  margin: -8px 0 16px;
+  font: 400 13px/1.5 var(--viz-font); color: var(--viz-text-muted);
+}
+.report__none, .report__muted { color: var(--viz-text-muted); }
+.report__none { margin: 0; font: 400 13.5px/1.5 var(--viz-font); }
+.report__right { text-align: right; white-space: nowrap; }
+.report__tab { font-variant-numeric: tabular-nums; }
+
+/* What happened (the headline), then why. */
+.report__why {
+  margin: 10px 0 0;
+  font: 500 16px/1.4 var(--viz-font); color: var(--viz-text-secondary);
+}
+
+/* The three measures, each with its change and last week's figure. */
+.report__figures {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;
+  margin: 22px 0 0;
+}
+.report__figure dt {
+  font: 500 12px/1.2 var(--viz-font); color: var(--viz-text-muted); margin-bottom: 6px;
+}
+.report__figure dd { margin: 0; }
+.report__figure dd:first-of-type { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.report__figval {
+  font: 650 22px/1.1 var(--viz-font); color: var(--viz-text-primary);
+  font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+}
+.report__figwas {
+  margin-top: 4px !important;
+  font: 400 12px/1.2 var(--viz-font); color: var(--viz-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Every list on the page is one grid — a heading row over its rows — so the
+   columns line up down the list without a table. The bars, percentages and
+   change marks are the dashboard breakdown's own (`viz-rank__*`). */
+.report__rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.report__rows li,
+.report__head-row {
+  display: grid; align-items: center; gap: 14px;
+  font: 400 13.5px/1.3 var(--viz-font); color: var(--viz-text-primary);
+}
+.report__head-row { margin: 0 0 10px; font: 600 11px/1.2 var(--viz-font); color: var(--viz-text-muted); }
+.report__head-row > :not(:first-child) { text-align: right; }
+.report__head-row > :nth-child(2) { text-align: left; }
+.report__grid--bars :is(.report__head-row, li) {
+  grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) 5.5rem 5.75rem 5.75rem;
+}
+.report__grid--providers :is(.report__head-row, li) {
+  grid-template-columns: minmax(0, 1fr) 4rem 5.5rem 5.75rem;
+}
+.report__grid--providers .report__head-row > :nth-child(2) { text-align: right; }
+.report__rows--arrivals { gap: 8px; }
+.report__rows--arrivals li { grid-template-columns: minmax(0, 1fr) auto; }
+.report__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.report__num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.report .viz-rank__bar { background: var(--viz-seq-400); }
+
+/* New on the left, no longer used on the right; each side grouped by kind
+   under its own count, which is what the heading's counts point at. */
+.report__arrivals { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.report__sidehead {
+  display: flex; justify-content: space-between; margin: 0 0 12px !important;
+  padding-bottom: 8px; border-bottom: 1px solid var(--viz-border);
+}
+.report__kind + .report__kind { margin-top: 16px; }
+.report__kindhead { margin: 0 0 8px; font: 600 13px/1.2 var(--viz-font); color: var(--viz-text-primary); }
+
+.report__note {
+  display: flex; align-items: center; gap: 6px; margin: 8px 0 0;
+  font: 400 12px/1.2 var(--viz-font); color: var(--viz-text-muted);
+}
+.report__key { display: inline-block; margin-left: 10px; }
+.report__key:first-child { margin-left: 0; }
+.report__key--bar { width: 10px; height: 10px; border-radius: 2px; background: var(--viz-series-1); }
+.report__key--ghost { width: 10px; height: 10px; border-radius: 2px; background: var(--viz-other); opacity: 0.55; }
+
+/* Provider split: one bar, the whole week, each provider its share. */
+/* Segments flush, no gap — the dashboard's stacked bars dropped theirs so
+   the eye reads one whole rather than counting marks. */
+.report__split { display: flex; height: 8px; border-radius: 4px; margin-bottom: 12px; }
+.report__split > span { min-width: 3px; }
+.report__swatch {
+  display: inline-block; width: 10px; height: 10px; margin-right: 8px;
+  border-radius: 2px; vertical-align: -1px;
+}
+
+.report__foot {
+  padding: 18px 0 0;
+  font: 400 12px/1.5 var(--viz-font); color: var(--viz-text-muted);
+}
+
+@media (max-width: 720px) {
+  .report__headline { font-size: 30px; }
+  .report__copy { position: static; display: inline-block; margin-top: 14px; }
+  .report__figval { font-size: 18px; }
+  /* The name takes a line of its own; share, spend and % change beneath.
+     The dollar change is in the Markdown. */
+  .report__grid--bars :is(.report__head-row, li) { grid-template-columns: minmax(0, 1fr) 5rem 5rem; row-gap: 4px; }
+  .report__grid--bars li > .report__name { grid-column: 1 / -1; }
+  .report__grid--bars :is(.report__head-row > :first-child, .report__head-row > :nth-child(4), li > :nth-child(4)) { display: none; }
+  .report__arrivals { grid-template-columns: 1fr; gap: 24px; }
+}
+
+/* --- executive dashboard shell ------------------------------------------- */
+.page__head { justify-content: space-between; align-items: center; }
+.page__tools { display: flex; gap: 8px; align-items: center; }
+.page__hint--conn { margin: -6px 0 18px; }
+.page__hint code { font: 400 11.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.page__link {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; color: var(--viz-focus); text-decoration: underline;
+}
+.page__link:focus-visible { outline: 2px solid var(--viz-focus); outline-offset: 2px; border-radius: 2px; }

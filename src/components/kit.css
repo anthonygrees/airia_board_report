@@ -1,0 +1,772 @@
+/* ==========================================================================
+   viz-kit — component styles.
+   Reads only from the tokens in `theme/tokens.css`. No colour literals here.
+   ========================================================================== */
+
+.viz-sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+/* --------------------------------------------------------------- toolbar -- */
+
+/* Two zones. The controls wrap among themselves; the actions hold the right
+   edge and are never pushed to a line of their own by something appearing on
+   the left. One flat wrapping row let exactly that happen. */
+.viz-toolbar {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.viz-toolbar__controls {
+  display: flex; align-items: center; gap: 6px 18px; flex-wrap: wrap;
+  flex: 1 1 auto; min-width: 0;
+}
+.viz-toolbar__actions { display: flex; gap: 10px; flex-wrap: wrap; flex: 0 0 auto; }
+
+.viz-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: var(--viz-ctl-h);
+  font: 500 13px/1 var(--viz-font);
+  color: var(--viz-text-secondary);
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-border);
+  border-radius: var(--viz-radius-ctl);
+  padding: 0 14px; cursor: pointer;
+  transition: background var(--viz-dur-fast) var(--viz-ease), color var(--viz-dur-fast) var(--viz-ease);
+}
+.viz-btn:hover { background: var(--viz-surface-hover); color: var(--viz-text-primary); }
+
+/* Sized to sit inside a card's headline row without changing its height —
+   the toolbar height does not apply here. */
+.viz-btn--sm { height: auto; padding: 4px 9px; font-size: 11.5px; border-radius: 6px; gap: 6px; }
+
+.viz-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 6px;
+  color: var(--viz-text-muted);
+  background: none; border: 1px solid transparent; cursor: pointer;
+  transition: background var(--viz-dur-fast) var(--viz-ease), color var(--viz-dur-fast) var(--viz-ease);
+}
+.viz-iconbtn:hover { background: var(--viz-surface-hover); color: var(--viz-text-primary); }
+.viz-iconbtn[aria-pressed='true'] { background: var(--viz-surface-active); color: var(--viz-text-primary); }
+
+:where(.viz-btn, .viz-iconbtn, .viz-drop, .viz-legend__item,
+        .viz-anchor__step, .viz-cal__nav, .viz-menu__item, .viz-tp__range,
+        .viz-tp__apply, .viz-tp__calbtn, .viz-tp__x):focus-visible,
+.viz-plot svg:focus-visible,
+.viz-tableview:focus-visible {
+  outline: 2px solid var(--viz-focus); outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ card -- */
+
+.viz-card {
+  display: flex; flex-direction: column;
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-border);
+  border-radius: var(--viz-radius-card);
+  padding: 20px 22px 16px;
+  min-width: 0;
+}
+.viz-card__head { display: flex; flex-direction: column; gap: 8px; }
+
+/* Row one: title, view controls, then the table button pinned right. Nothing
+   here changes width with the selected view, so nothing moves — and the
+   height is FIXED, so a control that appears cannot stretch the row either. */
+.viz-card__headline {
+  display: flex; align-items: center; gap: 12px;
+  height: 28px;
+}
+.viz-card__tablebtn { margin-left: auto; }
+
+/* Row two: series keys. A FIXED height, not a minimum — a legend is a couple
+   of pixels taller than an empty row, which is enough to nudge the plot when
+   the view changes. Both sides read the same token so they cannot drift. */
+.viz-card__keys {
+  height: var(--viz-legend-h);
+  display: flex; align-items: center;
+}
+.viz-card__title {
+  font: 600 16px/1.3 var(--viz-font);
+  color: var(--viz-text-primary); margin: 0; letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.viz-card__value {
+  font: 700 30px/1.15 var(--viz-font);
+  color: var(--viz-text-primary);
+  margin: 10px 0 0; letter-spacing: -0.02em;
+  /* Proportional figures — tabular-nums makes a large number look loose. */
+  font-variant-numeric: proportional-nums;
+}
+.viz-card__value-suffix { font-size: 0.6em; font-weight: 500; color: var(--viz-text-secondary); }
+
+.viz-card__body {
+  margin-top: 14px; flex: 1; min-width: 0;
+  /* Cards in a row share a height. Content starts at the top — centring a
+     short table leaves an odd gap under the title. */
+  display: flex; flex-direction: column; justify-content: flex-start;
+}
+/* Dimmed on a delay, so a re-fold that lands in a few hundred milliseconds
+   — which is most of them, the rows being cached — does not flash. Fading
+   BACK is immediate: the base rule carries no delay. */
+.viz-card__body { transition: opacity var(--viz-dur-base) var(--viz-ease); }
+.viz-card__body[data-loading] { opacity: 0.45; transition-delay: var(--viz-dur-grace); }
+
+.viz-card__foot { margin-top: 8px; }
+
+.viz-extent {
+  display: flex; justify-content: space-between;
+  font: 500 11.5px/1 var(--viz-font);
+  color: var(--viz-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- legend -- */
+
+.viz-legend { display: flex; align-items: center; gap: 14px; margin: 0; padding: 0; list-style: none; flex-wrap: wrap; }
+.viz-legend__item {
+  display: inline-flex; align-items: center; gap: 7px;
+  font: 500 12.5px/1 var(--viz-font);
+  color: var(--viz-text-secondary);
+  background: none; border: 0; padding: 2px; cursor: default;
+  transition: opacity var(--viz-dur-fast) var(--viz-ease);
+}
+.viz-legend__item[data-dim] { opacity: 0.4; }
+
+.viz-key { display: inline-block; flex-shrink: 0; }
+.viz-key--dot { width: 8px; height: 8px; border-radius: 50%; }
+.viz-key--rect { width: 10px; height: 10px; border-radius: 2px; }
+.viz-key--line { width: 12px; height: 2px; border-radius: 1px; }
+
+/* --------------------------------------------------------------- tooltip -- */
+
+.viz-tooltip {
+  position: absolute; z-index: 5; pointer-events: none;
+  background: var(--viz-surface-raised);
+  border: 1px solid var(--viz-border);
+  border-radius: 8px;
+  padding: 9px 11px;
+  box-shadow: 0 6px 20px -6px rgb(0 0 0 / 0.25), 0 1px 2px rgb(0 0 0 / 0.08);
+  font: 400 12px/1.4 var(--viz-font);
+  box-sizing: border-box;
+}
+.viz-tooltip__title {
+  font-weight: 600; font-size: 11.5px;
+  color: var(--viz-text-secondary);
+  padding-bottom: 7px; margin-bottom: 6px;
+  border-bottom: 1px solid var(--viz-border);
+}
+.viz-tooltip__rows { display: flex; flex-direction: column; gap: 5px; }
+.viz-tooltip__row { display: flex; align-items: center; gap: 7px; }
+.viz-tooltip__label { color: var(--viz-text-secondary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The value leads: the reader has the series and wants the number. */
+.viz-tooltip__value { font-weight: 650; color: var(--viz-text-primary); font-variant-numeric: tabular-nums; }
+.viz-tooltip__footer {
+  margin-top: 7px; padding-top: 6px; border-top: 1px solid var(--viz-border);
+  font-size: 11px; color: var(--viz-text-muted);
+}
+
+/* ------------------------------------------------------------------ plot -- */
+
+.viz-plot { position: relative; width: 100%; min-width: 0; }
+.viz-plot svg { display: block; overflow: visible; border-radius: 2px; }
+
+.viz-grid-line { stroke: var(--viz-grid); stroke-width: 1; shape-rendering: crispEdges; }
+.viz-axis-line { stroke: var(--viz-axis); stroke-width: 1; shape-rendering: crispEdges; }
+.viz-crosshair { stroke: var(--viz-axis); stroke-width: 1; shape-rendering: crispEdges; }
+.viz-band-hover { fill: var(--viz-surface-active); }
+
+.viz-sparkline { display: block; overflow: visible; }
+
+/* ------------------------------------------------------------ rank table -- */
+
+/* Rank, name, a short bar, the figure, its change — Google Trends' query
+   tables. Positioned so the hover readout can sit over it. */
+.viz-rank { position: relative; container-type: inline-size; }
+.viz-rank table { width: 100%; border-collapse: collapse; }
+.viz-rank thead th {
+  font: 500 11.5px/1 var(--viz-font);
+  color: var(--viz-text-muted); text-align: left;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--viz-border);
+}
+.viz-rank thead th.viz-rank__num,
+.viz-rank thead th.viz-rank__change { text-align: right; }
+.viz-rank thead th[title] { cursor: help; }
+
+.viz-rank tbody tr { transition: background var(--viz-dur-fast) var(--viz-ease); }
+.viz-rank tbody tr:not(.viz-rank__pad):hover { background: var(--viz-surface-hover); }
+.viz-rank tbody :where(th, td) {
+  height: 40px; padding: 0; box-sizing: border-box;
+  border-bottom: 1px solid var(--viz-border);
+}
+.viz-rank tbody tr.viz-rank__pad td { border-bottom-color: transparent; }
+
+.viz-rank__pos {
+  width: 36px; padding-left: 8px !important;
+  font: 500 12px/1 var(--viz-font);
+  color: var(--viz-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.viz-rank tbody th { font-weight: 400; text-align: left; padding-right: 28px; }
+/* The name column shrinks to its longest name and the bar column takes the
+   slack, so a name sits beside its bar rather than a card-width away from
+   its figures. */
+.viz-rank :where(thead, tbody) th:nth-child(2) { width: 1%; white-space: nowrap; }
+.viz-rank__text {
+  display: inline-flex; align-items: center; gap: 7px;
+  font: 500 13px/1 var(--viz-font);
+  color: var(--viz-text-primary);
+  padding: 7px 0;
+  word-break: break-word;
+}
+
+/* Share of the TOTAL: a full track is 100% of spend, so the top row only
+   fills it when it really is everything. */
+.viz-rank__barcol { padding-right: 8px !important; }
+.viz-rank__share { display: flex; align-items: center; gap: 12px; }
+.viz-rank__track {
+  flex: 1; min-width: 0;
+  display: block; height: 6px; border-radius: 3px; overflow: hidden;
+  background: var(--viz-surface-sunken);
+}
+.viz-rank__bar { display: block; height: 100%; border-radius: 3px; }
+/* Present but too small to see still gets a sliver. */
+.viz-rank__bar[data-some] { min-width: 2px; }
+.viz-rank__pct {
+  width: 44px; text-align: right;
+  font: 500 12px/1 var(--viz-font);
+  color: var(--viz-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+/* On a narrow card the names need the room more than the bar does: the
+   figure beside it already says how much. */
+@container (max-width: 560px) {
+  .viz-rank__track { display: none; }
+  .viz-rank :where(thead, tbody) th:nth-child(2) { width: auto; white-space: normal; }
+}
+
+.viz-rank td.viz-rank__num {
+  width: 1%;
+  font: 500 13px/1 var(--viz-font);
+  color: var(--viz-text-primary);
+  text-align: right; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  padding-left: 16px;
+}
+
+/* Wide enough for "New" and "+1,240%" alike, so neither moves the
+   spend column. */
+.viz-rank__change {
+  width: 108px; text-align: right; white-space: nowrap; padding-right: 8px !important;
+}
+.viz-rank__delta {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: 500 13px/1 var(--viz-font);
+  color: var(--viz-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.viz-rank__delta svg { color: var(--viz-text-muted); }
+.viz-rank__flat { font: 500 13px/1 var(--viz-font); color: var(--viz-text-muted); }
+/* Focus ink on the active surface, not --viz-seq-100, which is a mid blue in
+   dark mode and would swamp the row. */
+.viz-rank__new {
+  display: inline-block;
+  font: 650 10px/1 var(--viz-font);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--viz-focus);
+  background: var(--viz-surface-active);
+  border-radius: 4px; padding: 4px 7px;
+}
+
+.viz-rank__pager {
+  display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+  margin-top: 10px;
+}
+.viz-rank__count {
+  font: 400 12px/1 var(--viz-font); color: var(--viz-text-muted);
+  font-variant-numeric: tabular-nums; margin-right: 10px;
+}
+.viz-iconbtn:disabled { opacity: 0.35; cursor: default; background: none; }
+
+
+/* ------------------------------------------------------------ table view -- */
+
+.viz-tableview { overflow: auto; border-radius: 6px; }
+.viz-tableview table { width: 100%; border-collapse: collapse; font: 400 12.5px/1.5 var(--viz-font); }
+.viz-tableview thead th {
+  position: sticky; top: 0;
+  background: var(--viz-surface);
+  font-weight: 600; color: var(--viz-text-secondary);
+  padding: 6px 10px 6px 0; border-bottom: 1px solid var(--viz-border);
+  white-space: nowrap;
+}
+.viz-tableview tbody th { font-weight: 400; color: var(--viz-text-secondary); }
+.viz-tableview tbody th,
+.viz-tableview tbody td {
+  padding: 5px 10px 5px 0;
+  border-bottom: 1px solid var(--viz-border);
+  color: var(--viz-text-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.viz-tableview tbody tr:last-child :where(th, td) { border-bottom: 0; }
+
+/* ------------------------------------------------------------- stat tile -- */
+
+.viz-stat {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 16px 18px;
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-border);
+  border-radius: var(--viz-radius-card);
+}
+.viz-stat__label { font: 500 12px/1 var(--viz-font); color: var(--viz-text-secondary); }
+.viz-stat__value { font: 650 24px/1.15 var(--viz-font); color: var(--viz-text-primary); letter-spacing: -0.02em; }
+.viz-stat__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 20px; }
+/* Neutral by default: direction and magnitude, no verdict. */
+.viz-stat__delta {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: 500 11.5px/1 var(--viz-font);
+  color: var(--viz-text-secondary);
+}
+.viz-stat__delta[data-tone='good'] { color: var(--viz-status-good); }
+.viz-stat__delta[data-tone='bad'] { color: var(--viz-status-critical); }
+.viz-stat__vs { color: var(--viz-text-muted); }
+
+/* ------------------------------------------------------- reduced motion -- */
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+}
+
+/* Axis tick labels: text tokens, never the series colour; tabular so the
+   column of numbers aligns. */
+.viz-tick {
+  fill: var(--viz-text-muted);
+  font: 500 11px/1 var(--viz-font);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Small print under a plot — the caveat a number needs to be read correctly.
+   No prose cap: these are single-line status lines, and wrapping one changes
+   the card's height, which shifts everything below it. */
+.card-note {
+  margin: 8px 0 0;
+  font: 400 11px/1.45 var(--viz-font);
+  color: var(--viz-text-muted);
+}
+.card-note[data-isolated] { color: var(--viz-text-secondary); }
+
+/* In-card view switch (breakdown / cumulative). */
+.viz-viewtoggle {
+  display: inline-flex; gap: 2px; padding: 2px;
+  background: var(--viz-surface-sunken);
+  border-radius: 6px;
+}
+.viz-viewtoggle button {
+  font: 500 11.5px/1 var(--viz-font);
+  color: var(--viz-text-secondary);
+  background: none; border: 0; cursor: pointer;
+  padding: 5px 9px; border-radius: 4px;
+  transition: background var(--viz-dur-fast) var(--viz-ease), color var(--viz-dur-fast) var(--viz-ease);
+}
+.viz-viewtoggle button:hover { color: var(--viz-text-primary); }
+.viz-viewtoggle button[aria-pressed='true'] {
+  background: var(--viz-surface);
+  color: var(--viz-text-primary);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.card-note em { font-style: normal; color: var(--viz-text-secondary); font-weight: 600; }
+
+/* A total or reference row in a tooltip, set off from the series it sums. */
+.viz-tooltip__row--total {
+  margin-top: 5px; padding-top: 6px;
+  border-top: 1px solid var(--viz-border);
+}
+.viz-tooltip__row--total .viz-tooltip__label { color: var(--viz-text-primary); font-weight: 600; }
+.viz-key--none { width: 12px; height: 2px; }
+
+/* The unfiltered whole, behind an isolated series. Faint enough to read as
+   context rather than data, and never coloured — it is not a series. */
+.viz-ghost-bar { fill: var(--viz-other); opacity: 0.22; }
+/* Last week as a column of its own beside this week's: grey, because it is
+   the reference rather than a series, but solid enough to read as data. */
+.viz-ghost-pair { fill: var(--viz-other); opacity: 0.55; }
+
+/* --- selectable rank rows ------------------------------------------------ */
+
+.viz-rank tr[data-selectable] { cursor: pointer; }
+.viz-rank__pick {
+  display: block; width: 100%; padding: 0;
+  font: inherit; color: inherit;
+  background: none; border: 0; cursor: pointer; text-align: left;
+  border-radius: var(--viz-radius-chip);
+}
+
+/* Selection is a ring on the row, deliberately unlike the proportional bar —
+   the bar encodes magnitude and was once read as a selected state. */
+.viz-rank tr[data-selected] { background: var(--viz-surface-active); box-shadow: inset 0 0 0 1.5px var(--viz-focus); }
+.viz-rank tr[data-selected] .viz-rank__text { font-weight: 600; }
+
+/* Line-chart ghost: the unfiltered whole behind an isolated series. */
+.viz-ghost-line { stroke: var(--viz-other); stroke-width: 1.5; opacity: 0.55; }
+
+/* Gradient stops for a filled area. `currentColor` picks up the series
+   colour, set on the gradient element, which keeps every hex in the theme
+   and every opacity in a token. */
+.viz-area-stop--top { stop-color: currentColor; stop-opacity: var(--viz-area-top); }
+.viz-area-stop--bottom { stop-color: currentColor; stop-opacity: var(--viz-area-bottom); }
+.viz-area-stop--ghost-top { stop-color: var(--viz-other); stop-opacity: var(--viz-ghost-top); }
+.viz-area-stop--ghost-bottom { stop-color: var(--viz-other); stop-opacity: var(--viz-area-bottom); }
+
+/* --- multi-select with search ------------------------------------------- */
+
+.viz-msel { position: relative; }
+.viz-msel__pop {
+  position: absolute; z-index: 20; top: calc(100% + 6px); left: 0;
+  width: 290px;
+  display: flex; flex-direction: column;
+  background: var(--viz-surface-raised);
+  border: 1px solid var(--viz-border);
+  border-radius: var(--viz-radius-ctl);
+  box-shadow: 0 12px 32px -10px rgb(0 0 0 / 0.35), 0 1px 2px rgb(0 0 0 / 0.1);
+  overflow: hidden;
+}
+.viz-msel__search {
+  font: 400 13px/1 var(--viz-font);
+  color: var(--viz-text-primary);
+  background: none; border: 0;
+  border-bottom: 1px solid var(--viz-border);
+  padding: 11px 13px;
+  outline: none;
+}
+.viz-msel__search::placeholder { color: var(--viz-text-muted); }
+
+.viz-msel__list { max-height: 244px; overflow-y: auto; padding: 5px; }
+.viz-msel__opt {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  font: 400 12.5px/1.3 var(--viz-font);
+  color: var(--viz-text-primary);
+  background: none; border: 0; cursor: pointer;
+  padding: 7px 8px; border-radius: 6px; text-align: left;
+}
+.viz-msel__opt:hover { background: var(--viz-surface-hover); }
+.viz-msel__opt[aria-selected='true'] { background: var(--viz-surface-active); font-weight: 600; }
+.viz-msel__opt-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.viz-msel__check {
+  width: 14px; height: 14px; flex-shrink: 0;
+  display: grid; place-items: center;
+  border: 1px solid var(--viz-axis); border-radius: 3px;
+  color: var(--viz-surface);
+}
+.viz-msel__opt[aria-selected='true'] .viz-msel__check {
+  background: var(--viz-focus); border-color: var(--viz-focus);
+}
+.viz-msel__empty { margin: 0; padding: 14px 10px; font: 400 12.5px/1 var(--viz-font); color: var(--viz-text-muted); }
+
+.viz-msel__foot {
+  display: flex; gap: 4px; padding: 6px;
+  border-top: 1px solid var(--viz-border);
+}
+.viz-msel__action {
+  flex: 1;
+  font: 500 11.5px/1 var(--viz-font);
+  color: var(--viz-text-secondary);
+  background: none; border: 0; cursor: pointer;
+  padding: 7px 6px; border-radius: 6px;
+}
+.viz-msel__action:hover:not(:disabled) { background: var(--viz-surface-hover); color: var(--viz-text-primary); }
+.viz-msel__action:disabled { opacity: 0.4; cursor: default; }
+
+/* --- toolbar dropdowns ---------------------------------------------------- */
+
+/* Text and a chevron, no box, until reached for. Every trigger is exactly
+   --viz-ctl-h tall so the row keeps one baseline beside the boxed actions. */
+.viz-dropwrap { position: relative; }
+.viz-drop {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: var(--viz-ctl-h);
+  padding: 0 10px; margin: 0 -2px;
+  font: 500 14px/1 var(--viz-font);
+  color: var(--viz-text-secondary);
+  background: none; border: 0; border-radius: var(--viz-radius-ctl); cursor: pointer;
+  transition: background var(--viz-dur-fast) var(--viz-ease), color var(--viz-dur-fast) var(--viz-ease);
+}
+.viz-drop:hover { background: var(--viz-surface-hover); color: var(--viz-text-primary); }
+.viz-drop[aria-expanded='true'] { background: var(--viz-surface-active); color: var(--viz-text-primary); }
+.viz-drop__chev { color: var(--viz-text-muted); flex-shrink: 0; transition: transform var(--viz-dur-fast) var(--viz-ease); }
+.viz-drop[aria-expanded='true'] .viz-drop__chev { transform: rotate(180deg); }
+/* A filter narrowing the data, or a window that no longer ends now. Ink,
+   not fill: the ramp's lightest step is a mid blue in dark mode. */
+.viz-drop[data-active] { color: var(--viz-focus); }
+.viz-drop[data-active] .viz-drop__chev { color: var(--viz-focus); }
+
+/* The visible label shares one grid cell with invisible copies of every
+   label the trigger can show, so it is always exactly its widest form. */
+.viz-drop__label {
+  display: inline-grid; text-align: left; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.viz-drop__label > * { grid-area: 1 / 1; }
+.viz-drop__sizer { visibility: hidden; }
+/* Clips for the ellipsis, so it needs a line box taller than the glyphs:
+   at the trigger's line-height of 1 the descender of "g" was cut off. */
+.viz-msel__summary {
+  display: block; max-width: 22ch; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+/* A short single-choice menu: heading, items, a check on the chosen one. */
+.viz-menu {
+  position: absolute; z-index: 20; top: calc(100% + 6px); left: 0;
+  min-width: 210px;
+  background: var(--viz-surface-raised);
+  border: 1px solid var(--viz-border);
+  border-radius: var(--viz-radius-ctl);
+  box-shadow: 0 12px 32px -10px rgb(0 0 0 / 0.35), 0 1px 2px rgb(0 0 0 / 0.1);
+  padding: 6px;
+}
+.viz-menu__head {
+  margin: 0; padding: 8px 10px 6px;
+  font: 500 12px/1 var(--viz-font); color: var(--viz-text-muted);
+}
+.viz-menu__item {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  width: 100%; padding: 9px 10px;
+  font: 400 14px/1.2 var(--viz-font); color: var(--viz-text-primary);
+  background: none; border: 0; border-radius: 6px; cursor: pointer; text-align: left;
+}
+.viz-menu__item:hover { background: var(--viz-surface-hover); }
+.viz-menu__item[aria-selected='true'] { background: var(--viz-surface-active); font-weight: 500; }
+.viz-menu__hint { margin-left: 8px; font-size: 12px; color: var(--viz-text-muted); font-weight: 400; }
+.viz-menu__check { color: var(--viz-text-muted); flex-shrink: 0; }
+
+
+/* --- pager: where the window sits ------------------------------------------ */
+
+.viz-pager {
+  display: inline-flex; align-items: center; gap: 2px;
+  height: var(--viz-ctl-h);
+}
+.viz-anchor__step {
+  display: inline-grid; place-items: center;
+  width: 28px; height: 28px;
+  border: 0; border-radius: 6px; cursor: pointer;
+  color: var(--viz-text-muted); background: none;
+  transition: background var(--viz-dur-fast) var(--viz-ease), color var(--viz-dur-fast) var(--viz-ease);
+}
+.viz-anchor__step:hover:not(:disabled) { background: var(--viz-surface-hover); color: var(--viz-text-primary); }
+.viz-anchor__step:disabled { opacity: 0.35; cursor: default; }
+.viz-pager__label {
+  display: inline-grid; padding: 0 4px;
+  font: 400 13px/1 var(--viz-font); color: var(--viz-text-muted);
+  font-variant-numeric: tabular-nums; white-space: nowrap; text-align: center;
+}
+.viz-pager__label > * { grid-area: 1 / 1; }
+.viz-pager[data-past] .viz-pager__label { color: var(--viz-text-primary); }
+
+/* --- time picker ------------------------------------------------------------ */
+
+/* Main panel, and the calendar beside it when asked for — two panels, the
+   way Grafana lays it out. Side by side while they fit; stacked on a
+   narrow screen, where the calendar goes on top. */
+.viz-time__pop { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; }
+.viz-tp {
+  display: flex; align-items: flex-start; gap: 6px;
+  max-width: calc(100vw - 16px);
+}
+.viz-tp__main, .viz-tp__cal {
+  background: var(--viz-surface-raised);
+  border: 1px solid var(--viz-border);
+  border-radius: var(--viz-radius-ctl);
+  box-shadow: 0 12px 32px -10px rgb(0 0 0 / 0.35), 0 1px 2px rgb(0 0 0 / 0.1);
+}
+.viz-tp__main { width: 560px; max-width: 100%; display: flex; flex-direction: column; }
+.viz-tp__panes { display: grid; grid-template-columns: 1fr 200px; }
+.viz-tp__abs { padding: 16px 18px; min-width: 0; }
+.viz-tp__quick {
+  border-left: 1px solid var(--viz-border);
+  padding: 12px 8px; max-height: 360px; overflow-y: auto;
+}
+.viz-tp__title { margin: 0 0 12px; font: 600 14px/1.2 var(--viz-font); color: var(--viz-text-primary); }
+.viz-tp__title--sub { margin: 20px 0 6px; font-size: 13px; }
+
+.viz-tp__field { margin-bottom: 12px; }
+.viz-tp__label {
+  display: flex; flex-direction: column; gap: 6px;
+  font: 500 12px/1 var(--viz-font); color: var(--viz-text-secondary);
+}
+.viz-tp__input {
+  display: flex; align-items: stretch;
+  border: 1px solid var(--viz-border); border-radius: 6px; overflow: hidden;
+  background: var(--viz-surface-sunken);
+}
+.viz-tp__input:focus-within { border-color: var(--viz-focus); }
+.viz-tp__input[data-error] { border-color: var(--viz-status-critical); }
+.viz-tp__input input {
+  flex: 1; min-width: 0; padding: 9px 10px;
+  font: 400 13.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--viz-text-primary); background: none; border: 0; outline: none;
+}
+.viz-tp__calbtn {
+  display: grid; place-items: center; width: 38px;
+  color: var(--viz-text-secondary); background: var(--viz-surface-hover);
+  border: 0; border-left: 1px solid var(--viz-border); cursor: pointer;
+}
+.viz-tp__calbtn:hover, .viz-tp__calbtn[aria-pressed='true'] { color: var(--viz-text-primary); background: var(--viz-surface-active); }
+/* Errors always carry text, so the colour is never the only signal. */
+.viz-tp__error { margin: 6px 0 0; font: 400 11.5px/1.4 var(--viz-font); color: var(--viz-status-critical); }
+
+.viz-tp__apply {
+  margin-top: 4px; padding: 10px 14px;
+  font: 600 13px/1 var(--viz-font); color: var(--viz-page);
+  background: var(--viz-focus); border: 0; border-radius: 6px; cursor: pointer;
+}
+.viz-tp__apply:hover:not(:disabled) { background: var(--viz-seq-600); }
+.viz-tp__apply:disabled { opacity: 0.45; cursor: default; }
+
+.viz-tp__recent { list-style: none; margin: 0; padding: 0; }
+.viz-tp__range {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; padding: 8px 10px;
+  font: 400 13.5px/1.3 var(--viz-font); color: var(--viz-text-primary);
+  font-variant-numeric: tabular-nums;
+  background: none; border: 0; border-radius: 6px; cursor: pointer; text-align: left;
+}
+.viz-tp__abs .viz-tp__range { margin: 0 -10px; width: calc(100% + 20px); }
+.viz-tp__range:hover { background: var(--viz-surface-hover); }
+.viz-tp__quickitem[aria-selected='true'] { background: var(--viz-surface-active); font-weight: 500; }
+
+.viz-tp__search {
+  display: flex; align-items: center; gap: 7px; margin: 0 2px 8px;
+  padding: 0 9px; color: var(--viz-text-muted);
+  border: 1px solid var(--viz-border); border-radius: 6px; background: var(--viz-surface-sunken);
+}
+.viz-tp__search:focus-within { border-color: var(--viz-focus); }
+.viz-tp__search input {
+  flex: 1; min-width: 0; padding: 8px 0;
+  font: 400 13px/1 var(--viz-font); color: var(--viz-text-primary);
+  background: none; border: 0; outline: none;
+}
+.viz-tp__search input::placeholder { color: var(--viz-text-muted); }
+.viz-tp__empty { margin: 0; padding: 10px; font: 400 12.5px/1 var(--viz-font); color: var(--viz-text-muted); }
+
+.viz-tp__foot {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 11px 18px; border-top: 1px solid var(--viz-border);
+  font: 400 12px/1.3 var(--viz-font); color: var(--viz-text-muted);
+}
+.viz-tp__foot strong { color: var(--viz-text-secondary); font-weight: 600; margin-right: 6px; }
+.viz-tp__offset { font-variant-numeric: tabular-nums; }
+
+.viz-tp__cal { padding: 10px; }
+.viz-tp__calhead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 2px 2px 8px; font: 600 13px/1 var(--viz-font); color: var(--viz-text-primary);
+}
+.viz-tp__x {
+  display: grid; place-items: center; width: 24px; height: 24px;
+  color: var(--viz-text-muted); background: none; border: 0; border-radius: 6px; cursor: pointer;
+}
+.viz-tp__x:hover { background: var(--viz-surface-hover); color: var(--viz-text-primary); }
+/* The calendar brings its own panel; inside ours it is just the grid. */
+.viz-tp__cal .viz-cal { border: 0; box-shadow: none; padding: 0; background: none; }
+
+@media (max-width: 720px) {
+  .viz-tp { flex-direction: column; align-items: stretch; width: min(560px, calc(100vw - 16px)); }
+  .viz-tp__main { width: auto; }
+  .viz-tp__panes { grid-template-columns: 1fr; }
+  .viz-tp__quick { border-left: 0; border-top: 1px solid var(--viz-border); max-height: 220px; }
+}
+
+/* --- calendar ------------------------------------------------------------ */
+
+.viz-cal {
+  width: 266px;
+  display: flex; flex-direction: column;
+  background: var(--viz-surface-raised);
+  border: 1px solid var(--viz-border);
+  border-radius: var(--viz-radius-ctl);
+  box-shadow: 0 12px 32px -10px rgb(0 0 0 / 0.35), 0 1px 2px rgb(0 0 0 / 0.1);
+  padding: 10px;
+}
+.viz-cal__head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 6px; padding: 2px 2px 8px;
+}
+.viz-cal__month {
+  font: 600 13px/1 var(--viz-font); color: var(--viz-text-primary);
+}
+.viz-cal__nav {
+  display: inline-grid; place-items: center;
+  width: 26px; height: 26px; border-radius: 6px;
+  color: var(--viz-text-secondary); background: none; border: 0; cursor: pointer;
+  transition: background var(--viz-dur-fast) var(--viz-ease), color var(--viz-dur-fast) var(--viz-ease);
+}
+.viz-cal__nav:hover:not(:disabled) { background: var(--viz-surface-hover); color: var(--viz-text-primary); }
+.viz-cal__nav:disabled { opacity: 0.3; cursor: default; }
+
+.viz-cal__dow, .viz-cal__grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+}
+.viz-cal__dow span {
+  display: grid; place-items: center; height: 22px;
+  font: 500 10.5px/1 var(--viz-font); color: var(--viz-text-muted);
+}
+.viz-cal__day {
+  position: relative;
+  display: grid; place-items: center; height: 30px;
+  font: 500 12px/1 var(--viz-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--viz-text-primary);
+  background: none; border: 0; border-radius: 0; cursor: pointer;
+  transition: background var(--viz-dur-fast) var(--viz-ease), color var(--viz-dur-fast) var(--viz-ease);
+}
+.viz-cal__day:hover:not(:disabled) { background: var(--viz-surface-hover); border-radius: 6px; }
+.viz-cal__day:disabled { opacity: 0.25; cursor: default; }
+.viz-cal__day[data-outside] { color: var(--viz-text-muted); }
+
+/* The band is the selected range — or, mid-selection, the one the pointer
+   is drawing. Square through the middle so consecutive days read as one
+   continuous span, rounded only at its two ends. */
+.viz-cal__day[data-window] { background: var(--viz-seq-100); color: var(--viz-text-primary); }
+.viz-cal__day[data-window]:hover:not(:disabled) { background: var(--viz-seq-200); border-radius: 0; }
+.viz-cal__day[data-edge='start'] { border-radius: 6px 0 0 6px; }
+.viz-cal__day[data-edge='end'] { border-radius: 0 6px 6px 0; }
+.viz-cal__day[data-edge='only'] { border-radius: 6px; }
+
+/* Both ends are filled, with --viz-page as the ink: that pair inverts
+   correctly in both modes — pale on a dark fill in light mode, dark on a
+   pale fill in dark mode — where --viz-text-primary would not. */
+.viz-cal__day[data-edge] {
+  background: var(--viz-seq-700); color: var(--viz-page); font-weight: 700;
+}
+.viz-cal__day[data-edge]:hover:not(:disabled) { background: var(--viz-seq-600); }
+
+/* The first click of a pair, before the second lands. */
+.viz-cal__day[data-pending] { box-shadow: inset 0 0 0 2px var(--viz-focus); }
+
+.viz-cal__day[data-today]:not([data-edge]) { box-shadow: inset 0 0 0 1px var(--viz-axis); }
+.viz-cal__day:focus-visible { outline: 2px solid var(--viz-focus); outline-offset: -2px; z-index: 1; }
+
+.viz-cal__foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid var(--viz-border);
+}
+.viz-cal__note {
+  margin: 0; flex: 1;
+  font: 400 11px/1.4 var(--viz-font); color: var(--viz-text-muted);
+}
+.viz-cal__note strong { color: var(--viz-text-secondary); font-weight: 600; }
+.viz-cal__todaybtn {
+  flex-shrink: 0;
+  font: 600 11.5px/1 var(--viz-font); color: var(--viz-seq-700);
+  background: none; border: 0; cursor: pointer; padding: 5px 6px; border-radius: 6px;
+}
+.viz-cal__todaybtn:hover:not(:disabled) { background: var(--viz-surface-hover); }
+.viz-cal__todaybtn:disabled { color: var(--viz-text-muted); cursor: default; }
